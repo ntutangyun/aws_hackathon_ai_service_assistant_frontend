@@ -36,19 +36,34 @@ const useChatStore = create((set, get) => ({
 
   // Send a message and get response
   sendMessage: async (messageText) => {
-    const { addMessage, setLoading, setError, sessionId, setSessionId } = get();
+    const { addMessage, setLoading, setError, sessionId, setSessionId, messages } = get();
 
     try {
       setLoading(true);
       setError(null);
 
-      // Add user message
+      // Add user message to local state
       addMessage({
         role: 'user',
         content: messageText
       });
 
-      // Call API
+      // Get current messages and add the new user message
+      // Convert to the format expected by the backend
+      const conversationHistory = [
+        ...messages.map(msg => ({
+          role: msg.role,
+          content: [{ text: msg.content }]
+        })),
+        {
+          role: 'user',
+          content: [{ text: messageText }]
+        }
+      ];
+
+      console.log('Conversation History:', conversationHistory);
+
+      // Call API with full conversation history
       const { API_URL } = await import('../config/api');
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
@@ -56,7 +71,7 @@ const useChatStore = create((set, get) => ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: messageText,
+          messages: conversationHistory,
           session_id: sessionId
         }),
       });
