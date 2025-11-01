@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { udmApi, edgeServerApi, aiServiceApi } from '../services/mcpApi';
 import SubscriptionCard from './SubscriptionCard';
+import EdgeServerCard from './EdgeServerCard';
+import AIServiceCard from './AIServiceCard';
 
 const DebugPage = () => {
   const [activeTab, setActiveTab] = useState('udm');
@@ -52,9 +54,36 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await udmApi.getAllSubscriptions();
-      setSubscriptions(data);
+      console.log('Raw API Response:', data);
+
+      // Handle different possible response formats
+      let subscriptionData = data;
+
+      // If data is wrapped in a result/data property
+      if (data && data.result) {
+        subscriptionData = data.result;
+      } else if (data && data.data) {
+        subscriptionData = data.data;
+      } else if (data && data.subscriptions) {
+        subscriptionData = data.subscriptions;
+      }
+
+      console.log('Processed subscriptions:', subscriptionData);
+
+      // Ensure it's an array
+      if (Array.isArray(subscriptionData)) {
+        setSubscriptions(subscriptionData);
+      } else if (subscriptionData && typeof subscriptionData === 'object') {
+        // If it's a single object, wrap it in an array
+        setSubscriptions([subscriptionData]);
+      } else {
+        setSubscriptions([]);
+        console.warn('Unexpected data format:', subscriptionData);
+      }
     } catch (err) {
+      console.error('Error fetching subscriptions:', err);
       setError(err.message);
+      setSubscriptions(null);
     } finally {
       setLoading(false);
     }
@@ -79,9 +108,28 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await edgeServerApi.getAllServers();
-      setEdgeServers(data);
+      console.log('Raw Edge Servers Response:', data);
+
+      let serverData = data;
+      if (data && data.result) {
+        serverData = data.result;
+      } else if (data && data.data) {
+        serverData = data.data;
+      } else if (data && data.servers) {
+        serverData = data.servers;
+      }
+
+      if (Array.isArray(serverData)) {
+        setEdgeServers(serverData);
+      } else if (serverData && typeof serverData === 'object') {
+        setEdgeServers([serverData]);
+      } else {
+        setEdgeServers([]);
+      }
     } catch (err) {
+      console.error('Error fetching edge servers:', err);
       setError(err.message);
+      setEdgeServers(null);
     } finally {
       setLoading(false);
     }
@@ -92,8 +140,12 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await edgeServerApi.getNetworkSummary();
-      setNetworkSummary(data);
+      let summaryData = data;
+      if (data && data.result) summaryData = data.result;
+      if (data && data.data) summaryData = data.data;
+      setNetworkSummary(summaryData);
     } catch (err) {
+      console.error('Error fetching network summary:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -105,8 +157,12 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await edgeServerApi.getHealthStatus();
-      setHealthStatus(data);
+      let healthData = data;
+      if (data && data.result) healthData = data.result;
+      if (data && data.data) healthData = data.data;
+      setHealthStatus(healthData);
     } catch (err) {
+      console.error('Error fetching health status:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -119,9 +175,28 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await aiServiceApi.getAllServices();
-      setAIServices(data);
+      console.log('Raw AI Services Response:', data);
+
+      let serviceData = data;
+      if (data && data.result) {
+        serviceData = data.result;
+      } else if (data && data.data) {
+        serviceData = data.data;
+      } else if (data && data.services) {
+        serviceData = data.services;
+      }
+
+      if (Array.isArray(serviceData)) {
+        setAIServices(serviceData);
+      } else if (serviceData && typeof serviceData === 'object') {
+        setAIServices([serviceData]);
+      } else {
+        setAIServices([]);
+      }
     } catch (err) {
+      console.error('Error fetching AI services:', err);
       setError(err.message);
+      setAIServices(null);
     } finally {
       setLoading(false);
     }
@@ -132,8 +207,12 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await aiServiceApi.getCatalogSummary();
-      setCatalogSummary(data);
+      let summaryData = data;
+      if (data && data.result) summaryData = data.result;
+      if (data && data.data) summaryData = data.data;
+      setCatalogSummary(summaryData);
     } catch (err) {
+      console.error('Error fetching catalog summary:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -145,8 +224,12 @@ const DebugPage = () => {
     setError(null);
     try {
       const data = await aiServiceApi.getCategories();
-      setCategories(data);
+      let catData = data;
+      if (data && data.result) catData = data.result;
+      if (data && data.data) catData = data.data;
+      setCategories(catData);
     } catch (err) {
+      console.error('Error fetching categories:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -347,25 +430,59 @@ const DebugPage = () => {
 
               {/* Data Display */}
               <div>
+                {/* Loading State */}
+                {loading && subscriptions === null && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+                      <p className="text-gray-600 font-medium">Loading subscriptions...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {!loading && subscriptions !== null && subscriptions.length === 0 && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+                    <div className="inline-block p-4 bg-gray-100 rounded-full mb-4">
+                      <Users className="w-12 h-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">No Subscriptions Found</h3>
+                    <p className="text-gray-600">Click "All Subscriptions" to fetch data from the server.</p>
+                  </div>
+                )}
+
                 {/* Subscriptions List */}
-                {subscriptions && subscriptions.length > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Subscriptions</h3>
-                      <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                {!loading && subscriptions && subscriptions.length > 0 && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">All Subscriptions</h3>
+                      <span className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-semibold shadow-lg">
                         {subscriptions.length} Total
                       </span>
                     </div>
                     <div className="space-y-6">
-                      {subscriptions.map((sub) => (
-                        <SubscriptionCard key={sub.subscriberId} subscription={sub} />
+                      {subscriptions.map((sub, index) => (
+                        <SubscriptionCard key={sub.subscriberId || index} subscription={sub} />
                       ))}
                     </div>
                   </div>
                 )}
 
+                {/* Debug Info - Remove after testing */}
+                {!loading && subscriptions !== null && (
+                  <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                    <p className="text-xs font-mono text-yellow-800">
+                      Debug: Received {subscriptions ? subscriptions.length : 0} subscriptions
+                    </p>
+                  </div>
+                )}
+
                 {/* Summary Details (Keep as JSON for reference) */}
-                {subscriptionSummary && renderJSON(subscriptionSummary, 'Detailed Summary Data')}
+                {subscriptionSummary && (
+                  <div className="mt-8">
+                    {renderJSON(subscriptionSummary, 'Detailed Summary Data')}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -440,9 +557,71 @@ const DebugPage = () => {
 
               {/* Data Display */}
               <div>
-                {renderJSON(edgeServers, 'All Edge Servers')}
-                {renderJSON(networkSummary, 'Network Summary Details')}
-                {renderJSON(healthStatus, 'Health Status Report')}
+                {/* Edge Servers List */}
+                {!loading && edgeServers && edgeServers.length > 0 && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">All Edge Servers</h3>
+                      <span className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-sm font-semibold shadow-lg">
+                        {edgeServers.length} Total
+                      </span>
+                    </div>
+                    <div className="space-y-6">
+                      {edgeServers.map((server, index) => (
+                        <EdgeServerCard key={server.serverId || index} server={server} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Health Status as Cards */}
+                {!loading && healthStatus && Array.isArray(healthStatus) && healthStatus.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6">Health Status Overview</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {healthStatus.map((health, index) => (
+                        <div key={index} className="bg-white rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-gray-900">{health.serverName}</h4>
+                            <span className={`w-3 h-3 rounded-full ${
+                              health.health === 'HEALTHY' ? 'bg-green-500' :
+                              health.health === 'WARNING' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}></span>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Status:</span>
+                              <span className="font-semibold">{health.status}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">CPU:</span>
+                              <span className="font-semibold">{health.utilization?.cpu?.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Memory:</span>
+                              <span className="font-semibold">{health.utilization?.memory?.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">GPU:</span>
+                              <span className="font-semibold">{health.utilization?.gpu?.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Services:</span>
+                              <span className="font-semibold">{health.deployedServices || 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Network Summary as JSON (keep for reference) */}
+                {networkSummary && (
+                  <div className="mt-8">
+                    {renderJSON(networkSummary, 'Network Summary Details')}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -516,9 +695,62 @@ const DebugPage = () => {
 
               {/* Data Display */}
               <div>
-                {renderJSON(aiServices, 'All AI Services')}
-                {renderJSON(catalogSummary, 'Catalog Summary Details')}
-                {renderJSON(categories, 'Service Categories')}
+                {/* AI Services List */}
+                {!loading && aiServices && aiServices.length > 0 && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">All AI Services</h3>
+                      <span className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold shadow-lg">
+                        {aiServices.length} Total
+                      </span>
+                    </div>
+                    <div className="space-y-6">
+                      {aiServices.map((service, index) => (
+                        <AIServiceCard key={service.serviceId || index} service={service} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Categories Overview */}
+                {!loading && categories && Array.isArray(categories) && categories.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6">Service Categories</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categories.map((cat, index) => (
+                        <div key={index} className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-md border border-gray-200 p-5 hover:shadow-lg transition-all">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-gray-900">{cat.category?.replace('_', ' ')}</h4>
+                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                              {cat.count} services
+                            </span>
+                          </div>
+                          {cat.services && cat.services.length > 0 && (
+                            <div className="space-y-1 mt-3">
+                              {cat.services.slice(0, 3).map((svc, idx) => (
+                                <div key={idx} className="text-xs text-gray-600 truncate">
+                                  • {svc.serviceName}
+                                </div>
+                              ))}
+                              {cat.services.length > 3 && (
+                                <div className="text-xs text-gray-500 italic">
+                                  + {cat.services.length - 3} more
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Catalog Summary (keep as JSON for reference) */}
+                {catalogSummary && (
+                  <div className="mt-8">
+                    {renderJSON(catalogSummary, 'Catalog Summary Details')}
+                  </div>
+                )}
               </div>
             </div>
           )}

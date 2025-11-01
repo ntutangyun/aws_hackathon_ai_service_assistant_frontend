@@ -16,6 +16,15 @@ import {
 } from 'lucide-react';
 
 const SubscriptionCard = ({ subscription }) => {
+  // Safety check
+  if (!subscription) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <p className="text-red-600 font-medium">Invalid subscription data</p>
+      </div>
+    );
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'ACTIVE':
@@ -45,8 +54,9 @@ const SubscriptionCard = ({ subscription }) => {
     }
   };
 
-  const cellular = subscription.cellularSubscription;
+  const cellular = subscription.cellularSubscription || {};
   const edgeAI = subscription.edgeAISubscriptions || [];
+  const qos = cellular.qos || {};
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300">
@@ -105,11 +115,11 @@ const SubscriptionCard = ({ subscription }) => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
             <p className="text-xs text-gray-600 font-medium mb-1">Plan Type</p>
-            <p className="text-lg font-bold text-blue-900">{cellular.planType}</p>
+            <p className="text-lg font-bold text-blue-900">{cellular.planType || 'N/A'}</p>
           </div>
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
             <p className="text-xs text-gray-600 font-medium mb-1">Data Used</p>
-            <p className="text-lg font-bold text-green-900">{cellular.dataUsed} GB</p>
+            <p className="text-lg font-bold text-green-900">{cellular.dataUsed || 0} GB</p>
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
             <p className="text-xs text-gray-600 font-medium mb-1">Data Limit</p>
@@ -120,7 +130,7 @@ const SubscriptionCard = ({ subscription }) => {
           <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
             <p className="text-xs text-gray-600 font-medium mb-1">Remaining</p>
             <p className="text-lg font-bold text-orange-900">
-              {cellular.dataLimit ? `${(cellular.dataLimit - cellular.dataUsed).toFixed(1)} GB` : '∞'}
+              {cellular.dataLimit ? `${(cellular.dataLimit - (cellular.dataUsed || 0)).toFixed(1)} GB` : '∞'}
             </p>
           </div>
         </div>
@@ -130,34 +140,34 @@ const SubscriptionCard = ({ subscription }) => {
           <div className="flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4 text-indigo-600" />
             <h5 className="text-sm font-bold text-gray-900">QoS Profile</h5>
-            <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(cellular.qos.priority)}`}>
-              {cellular.qos.priority}
+            <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(qos.priority)}`}>
+              {qos.priority || 'STANDARD'}
             </span>
           </div>
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
             <div>
               <p className="text-gray-500 font-medium mb-1">QCI</p>
-              <p className="font-bold text-gray-900">{cellular.qos.qci}</p>
+              <p className="font-bold text-gray-900">{qos.qci || 'N/A'}</p>
             </div>
             <div>
               <p className="text-gray-500 font-medium mb-1">DL Speed</p>
-              <p className="font-bold text-gray-900">{cellular.qos.maxBitRateDL} Mbps</p>
+              <p className="font-bold text-gray-900">{qos.maxBitRateDL || 0} Mbps</p>
             </div>
             <div>
               <p className="text-gray-500 font-medium mb-1">UL Speed</p>
-              <p className="font-bold text-gray-900">{cellular.qos.maxBitRateUL} Mbps</p>
+              <p className="font-bold text-gray-900">{qos.maxBitRateUL || 0} Mbps</p>
             </div>
             <div>
               <p className="text-gray-500 font-medium mb-1">Guaranteed DL</p>
-              <p className="font-bold text-gray-900">{cellular.qos.guaranteedBitRateDL} Mbps</p>
+              <p className="font-bold text-gray-900">{qos.guaranteedBitRateDL || 0} Mbps</p>
             </div>
             <div>
               <p className="text-gray-500 font-medium mb-1">Guaranteed UL</p>
-              <p className="font-bold text-gray-900">{cellular.qos.guaranteedBitRateUL} Mbps</p>
+              <p className="font-bold text-gray-900">{qos.guaranteedBitRateUL || 0} Mbps</p>
             </div>
             <div>
               <p className="text-gray-500 font-medium mb-1">Latency</p>
-              <p className="font-bold text-gray-900">{cellular.qos.latency} ms</p>
+              <p className="font-bold text-gray-900">{qos.latency || 0} ms</p>
             </div>
           </div>
         </div>
