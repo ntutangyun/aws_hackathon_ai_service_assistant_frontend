@@ -49,8 +49,8 @@ const useChatStore = create((set, get) => ({
       });
 
       // Call API
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${apiUrl}/chat`, {
+      const { API_URL } = await import('../config/api');
+      const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

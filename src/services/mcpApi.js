@@ -1,5 +1,5 @@
 // API service for MCP server data
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_URL } from '../config/api';
 
 // UDM (Unified Data Management) APIs
 export const udmApi = {
