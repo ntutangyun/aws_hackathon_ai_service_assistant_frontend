@@ -34,7 +34,7 @@ const ChatContainer = () => {
             </h1>
             <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
               <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Powered by AWS Bedrock
+              Powered by AWS
             </p>
           </div>
           <button

@@ -2,7 +2,8 @@ import './App.css'
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom'
 import ChatContainer from './components/ChatContainer'
 import DebugPage from './components/DebugPage'
-import { MessageSquare, Database, Sparkles } from 'lucide-react'
+import TestAIServicesPage from './components/TestAIServicesPage'
+import { MessageSquare, Database, Sparkles, TestTube } from 'lucide-react'
 
 function Navigation() {
   const location = useLocation();
@@ -17,10 +18,11 @@ function Navigation() {
             </div>
             <div>
               <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                6G Network Assistant
+                Edge AI Service Assistant
               </h1>
             </div>
           </div>
+          <div className='text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent'>Team Cranfield</div>
           <div className="flex gap-2">
             <Link
               to="/"
@@ -44,6 +46,17 @@ function Navigation() {
               <Database className="w-4 h-4" />
               <span>Debug</span>
             </Link>
+            <Link
+              to="/test-services"
+              className={`px-6 py-2.5 font-semibold rounded-xl transition-all duration-300 flex items-center gap-2 ${
+                location.pathname === '/test-services'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-700 text-white shadow-lg transform scale-105'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/80'
+              }`}
+            >
+              <TestTube className="w-4 h-4" />
+              <span>Test Services</span>
+            </Link>
           </div>
         </div>
       </div>
@@ -60,6 +73,7 @@ function App() {
           <Routes>
             <Route path="/" element={<ChatContainer />} />
             <Route path="/debug" element={<DebugPage />} />
+            <Route path="/test-services" element={<TestAIServicesPage />} />
           </Routes>
         </div>
       </div>
