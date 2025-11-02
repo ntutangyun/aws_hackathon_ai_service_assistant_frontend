@@ -7,16 +7,14 @@ import {
   XCircle,
   Image as ImageIcon,
   Code,
-  Link as LinkIcon,
-  Zap,
   Server,
   FileJson,
   User,
   Cpu,
-  FileAudio,
-  Type,
-  List,
-  Layers
+  Zap,
+  Plus,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 
 const GRADCAM_METHODS = [
@@ -41,22 +39,10 @@ const ENDPOINT_TYPES = [
   { value: '/help', label: 'Get Help Information', method: 'GET' },
 ];
 
-const MODEL_TYPES = [
-  { value: 'image-classification', label: 'Image Classification', icon: ImageIcon, acceptFiles: 'image/*', needsFile: true },
-  { value: 'text-classification', label: 'Text Classification', icon: Type, needsFile: false },
-  { value: 'ner', label: 'Named Entity Recognition (NER)', icon: Type, needsFile: false },
-  { value: 'image-captioning', label: 'Image Captioning', icon: ImageIcon, acceptFiles: 'image/*', needsFile: true },
-  { value: 'audio-transcription', label: 'Audio Transcription', icon: FileAudio, acceptFiles: 'audio/*', needsFile: true },
-  { value: 'sentence-embeddings', label: 'Sentence Embeddings', icon: Layers, needsFile: false },
-  { value: 'image-generation', label: 'Image Generation/Refinement', icon: ImageIcon, acceptFiles: 'image/*', needsFile: true },
-  { value: 'zero-shot-classification', label: 'Zero-shot Classification', icon: List, needsFile: false },
-];
-
 const TestAIServicesPage = () => {
   const [serverUrl, setServerUrl] = useState('');
   const [ueId, setUeId] = useState('123456');
   const [endpointType, setEndpointType] = useState('/model/run');
-  const [modelType, setModelType] = useState('image-classification');
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -67,17 +53,8 @@ const TestAIServicesPage = () => {
   const [gradcamMethod, setGradcamMethod] = useState('GradCAM');
   const [targetCategories, setTargetCategories] = useState('');
 
-  // Model-specific input fields
-  const [textInput, setTextInput] = useState('');
-  const [promptInput, setPromptInput] = useState('');
-  const [sentencesInput, setSentencesInput] = useState('');
-  const [sequenceInput, setSequenceInput] = useState('');
-  const [candidateLabels, setCandidateLabels] = useState('');
-
-  // Get current model type configuration
-  const getCurrentModelConfig = () => {
-    return MODEL_TYPES.find(m => m.value === modelType);
-  };
+  // Dynamic custom fields - array of {name: string, values: string[], type: 'string' | 'array'}
+  const [customFields, setCustomFields] = useState([]);
 
   // Handle file selection
   const handleFileChange = (e) => {
@@ -104,6 +81,59 @@ const TestAIServicesPage = () => {
     setPreviewUrl(null);
   };
 
+  // Add a new custom field
+  const addCustomField = () => {
+    setCustomFields([...customFields, { name: '', values: [''], type: 'string' }]);
+  };
+
+  // Remove a custom field
+  const removeCustomField = (index) => {
+    setCustomFields(customFields.filter((_, i) => i !== index));
+  };
+
+  // Update custom field name
+  const updateCustomFieldName = (index, name) => {
+    const updated = [...customFields];
+    updated[index].name = name;
+    setCustomFields(updated);
+  };
+
+  // Update custom field value (for string type, index 0)
+  const updateCustomFieldValue = (index, valueIndex, value) => {
+    const updated = [...customFields];
+    updated[index].values[valueIndex] = value;
+    setCustomFields(updated);
+  };
+
+  // Update custom field type
+  const updateCustomFieldType = (index, type) => {
+    const updated = [...customFields];
+    updated[index].type = type;
+    // When switching to array, ensure at least one value
+    if (type === 'array' && updated[index].values.length === 0) {
+      updated[index].values = [''];
+    }
+    setCustomFields(updated);
+  };
+
+  // Add array item to field
+  const addArrayItem = (index) => {
+    const updated = [...customFields];
+    updated[index].values.push('');
+    setCustomFields(updated);
+  };
+
+  // Remove array item from field
+  const removeArrayItem = (index, valueIndex) => {
+    const updated = [...customFields];
+    updated[index].values = updated[index].values.filter((_, i) => i !== valueIndex);
+    // Keep at least one value
+    if (updated[index].values.length === 0) {
+      updated[index].values = [''];
+    }
+    setCustomFields(updated);
+  };
+
   // Check if current endpoint is XAI-related
   const isXaiEndpoint = () => {
     return endpointType.includes('xai_model');
@@ -115,56 +145,11 @@ const TestAIServicesPage = () => {
     return endpoint?.method === 'GET';
   };
 
-  // Validate inputs based on model type
+  // Validate inputs
   const validateInputs = () => {
     if (!serverUrl) {
       setError('Please enter a server URL');
       return false;
-    }
-
-    if (isGetRequest()) {
-      return true;
-    }
-
-    const modelConfig = getCurrentModelConfig();
-
-    // Check file requirement
-    if (modelConfig?.needsFile && !selectedFile) {
-      setError('Please select a file to upload');
-      return false;
-    }
-
-    // Check text-based inputs
-    switch (modelType) {
-      case 'text-classification':
-      case 'ner':
-        if (!textInput.trim()) {
-          setError('Please enter text input');
-          return false;
-        }
-        break;
-      case 'image-generation':
-        if (!promptInput.trim()) {
-          setError('Please enter a prompt');
-          return false;
-        }
-        break;
-      case 'sentence-embeddings':
-        if (!sentencesInput.trim()) {
-          setError('Please enter sentences');
-          return false;
-        }
-        break;
-      case 'zero-shot-classification':
-        if (!sequenceInput.trim()) {
-          setError('Please enter text to classify');
-          return false;
-        }
-        if (!candidateLabels.trim()) {
-          setError('Please enter candidate labels');
-          return false;
-        }
-        break;
     }
 
     return true;
@@ -194,40 +179,30 @@ const TestAIServicesPage = () => {
         // Add ue_id as form field (always required for POST)
         formData.append('ue_id', ueId);
 
-        // Add file if needed
-        const modelConfig = getCurrentModelConfig();
-        if (modelConfig?.needsFile && selectedFile) {
+        // Add file if selected
+        if (selectedFile) {
           formData.append('file', selectedFile);
         }
 
-        // Add model-specific fields
-        switch (modelType) {
-          case 'text-classification':
-          case 'ner':
-            formData.append('text', textInput);
-            break;
-
-          case 'image-captioning':
-            if (promptInput.trim()) {
-              formData.append('text', promptInput);
+        // Add custom fields (filter out empty field names)
+        customFields.forEach(field => {
+          if (field.name.trim()) {
+            if (field.type === 'array') {
+              // For array type, append each non-empty value separately with the same field name
+              // This way the backend receives it as an array
+              const nonEmptyValues = field.values.filter(v => v.trim().length > 0);
+              nonEmptyValues.forEach(value => {
+                formData.append(field.name, value);
+              });
+            } else {
+              // For string type, just append the first value
+              const value = field.values[0] || '';
+              if (value.trim()) {
+                formData.append(field.name, value);
+              }
             }
-            break;
-
-          case 'image-generation':
-            formData.append('prompt', promptInput);
-            break;
-
-          case 'sentence-embeddings':
-            const sentences = sentencesInput.split(',').map(s => s.trim()).filter(s => s);
-            formData.append('sentences', JSON.stringify(sentences));
-            break;
-
-          case 'zero-shot-classification':
-            formData.append('sequence', sequenceInput);
-            const labels = candidateLabels.split(',').map(l => l.trim()).filter(l => l);
-            formData.append('candidate_labels', JSON.stringify(labels));
-            break;
-        }
+          }
+        });
 
         // Add XAI-specific fields if needed
         if (isXaiEndpoint()) {
@@ -276,233 +251,6 @@ const TestAIServicesPage = () => {
     }
   };
 
-  const renderModelSpecificInputs = () => {
-    const modelConfig = getCurrentModelConfig();
-
-    return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg">
-            {modelConfig && <modelConfig.icon className="w-5 h-5 text-white" />}
-          </div>
-          <h2 className="text-xl font-bold text-gray-900">Model Inputs</h2>
-        </div>
-
-        <div className="space-y-4">
-          {/* Model Type Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Model Type
-            </label>
-            <select
-              value={modelType}
-              onChange={(e) => {
-                setModelType(e.target.value);
-                setSelectedFile(null);
-                setPreviewUrl(null);
-                setError(null);
-              }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            >
-              {MODEL_TYPES.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Text Input (for text classification, NER) */}
-          {(modelType === 'text-classification' || modelType === 'ner') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <div className="flex items-center gap-2">
-                  <Type className="w-4 h-4" />
-                  {modelType === 'ner' ? 'Text for NER' : 'Text to Classify'}
-                </div>
-              </label>
-              <textarea
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder={modelType === 'ner' ? 'Enter text to extract entities...' : 'Enter text to classify...'}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-              />
-            </div>
-          )}
-
-          {/* Prompt Input (for image generation, image captioning) */}
-          {modelType === 'image-captioning' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <div className="flex items-center gap-2">
-                  <Type className="w-4 h-4" />
-                  Prompt (Optional)
-                </div>
-              </label>
-              <input
-                type="text"
-                value={promptInput}
-                onChange={(e) => setPromptInput(e.target.value)}
-                placeholder="Optional prompt for conditional image captioning..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              />
-            </div>
-          )}
-
-          {modelType === 'image-generation' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <div className="flex items-center gap-2">
-                  <Type className="w-4 h-4" />
-                  Prompt (Required)
-                </div>
-              </label>
-              <textarea
-                value={promptInput}
-                onChange={(e) => setPromptInput(e.target.value)}
-                placeholder="Enter prompt for image generation/refinement..."
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-              />
-            </div>
-          )}
-
-          {/* Sentences Input (for sentence embeddings) */}
-          {modelType === 'sentence-embeddings' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4" />
-                  Sentences (comma-separated)
-                </div>
-              </label>
-              <textarea
-                value={sentencesInput}
-                onChange={(e) => setSentencesInput(e.target.value)}
-                placeholder="Enter sentences separated by commas, e.g., Hello world, How are you?"
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-              />
-            </div>
-          )}
-
-          {/* Zero-shot Classification Inputs */}
-          {modelType === 'zero-shot-classification' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4" />
-                    Sequence to Classify
-                  </div>
-                </label>
-                <textarea
-                  value={sequenceInput}
-                  onChange={(e) => setSequenceInput(e.target.value)}
-                  placeholder="Enter text to classify..."
-                  rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <List className="w-4 h-4" />
-                    Candidate Labels (comma-separated)
-                  </div>
-                </label>
-                <input
-                  type="text"
-                  value={candidateLabels}
-                  onChange={(e) => setCandidateLabels(e.target.value)}
-                  placeholder="e.g., politics, sports, technology"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </>
-          )}
-
-          {/* File Upload */}
-          {modelConfig?.needsFile && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <div className="flex items-center gap-2">
-                  {modelConfig.icon === FileAudio ? <FileAudio className="w-4 h-4" /> : <ImageIcon className="w-4 h-4" />}
-                  {modelConfig.icon === FileAudio ? 'Audio File' : 'Image File'}
-                </div>
-              </label>
-              {!selectedFile ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-500 transition-all">
-                  <input
-                    type="file"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="file-upload"
-                    accept={modelConfig.acceptFiles}
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="cursor-pointer flex flex-col items-center gap-2"
-                  >
-                    <div className="p-3 bg-gray-100 rounded-full">
-                      {modelConfig.icon === FileAudio ?
-                        <FileAudio className="w-6 h-6 text-gray-400" /> :
-                        <ImageIcon className="w-6 h-6 text-gray-400" />
-                      }
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700">
-                        Click to upload {modelConfig.icon === FileAudio ? 'audio' : 'image'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {modelConfig.acceptFiles}
-                      </p>
-                    </div>
-                  </label>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {previewUrl && (
-                    <div className="rounded-xl overflow-hidden border border-gray-200">
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="w-full h-48 object-contain bg-gray-50"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      {modelConfig.icon === FileAudio ?
-                        <FileAudio className="w-4 h-4 text-gray-600" /> :
-                        <ImageIcon className="w-4 h-4 text-gray-600" />
-                      }
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {selectedFile.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {(selectedFile.size / 1024).toFixed(2)} KB
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={clearFile}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       {/* Header */}
@@ -516,7 +264,7 @@ const TestAIServicesPage = () => {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Test AI Services
               </h1>
-              <p className="text-sm text-gray-600 mt-1">Test deployed AI services on (Simulated) Edge Servers</p>
+              <p className="text-sm text-gray-600 mt-1">Test deployed AI services with flexible custom parameters</p>
             </div>
           </div>
         </div>
@@ -586,6 +334,76 @@ const TestAIServicesPage = () => {
                 </div>
               </div>
 
+              {/* File Upload */}
+              {!isGetRequest() && (
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                      <Upload className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">File Upload (Optional)</h2>
+                  </div>
+
+                  {!selectedFile ? (
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-500 transition-all">
+                      <input
+                        type="file"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        className="cursor-pointer flex flex-col items-center gap-2"
+                      >
+                        <div className="p-3 bg-gray-100 rounded-full">
+                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-700">
+                            Click to upload file
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Any file type supported
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {previewUrl && (
+                        <div className="rounded-xl overflow-hidden border border-gray-200">
+                          <img
+                            src={previewUrl}
+                            alt="Preview"
+                            className="w-full h-48 object-contain bg-gray-50"
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-gray-600" />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {selectedFile.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {(selectedFile.size / 1024).toFixed(2)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={clearFile}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* XAI Options (only show for XAI endpoints) */}
               {isXaiEndpoint() && (
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
@@ -633,8 +451,109 @@ const TestAIServicesPage = () => {
                 </div>
               )}
 
-              {/* Model-Specific Inputs (only show for non-GET endpoints) */}
-              {!isGetRequest() && renderModelSpecificInputs()}
+              {/* Custom Fields (only show for non-GET endpoints) */}
+              {!isGetRequest() && (
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg">
+                        <Edit3 className="w-5 h-5 text-white" />
+                      </div>
+                      <h2 className="text-xl font-bold text-gray-900">Custom Parameters</h2>
+                    </div>
+                    <button
+                      onClick={addCustomField}
+                      className="flex items-center gap-2 px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-all text-sm font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Field
+                    </button>
+                  </div>
+
+                  {customFields.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="text-sm">No custom parameters added yet</p>
+                      <p className="text-xs mt-1">Click "Add Field" to add custom parameters</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {customFields.map((field, index) => (
+                        <div key={index} className="p-3 bg-gray-50 rounded-xl border border-gray-200">
+                          <div className="flex gap-2 items-start mb-3">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                value={field.name}
+                                onChange={(e) => updateCustomFieldName(index, e.target.value)}
+                                placeholder="Field name (e.g., text, text_prompt, sentences)"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm font-medium"
+                              />
+                            </div>
+                            <select
+                              value={field.type}
+                              onChange={(e) => updateCustomFieldType(index, e.target.value)}
+                              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+                            >
+                              <option value="string">String</option>
+                              <option value="array">Array of Strings</option>
+                            </select>
+                            <button
+                              onClick={() => removeCustomField(index)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Remove field"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* Values */}
+                          <div className="space-y-2">
+                            {field.values.map((value, valueIndex) => (
+                              <div key={valueIndex} className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  value={value}
+                                  onChange={(e) => updateCustomFieldValue(index, valueIndex, e.target.value)}
+                                  placeholder={field.type === 'array' ? `Item ${valueIndex + 1}` : 'Value'}
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+                                />
+                                {field.type === 'array' && (
+                                  <div className="flex gap-1">
+                                    {valueIndex === field.values.length - 1 && (
+                                      <button
+                                        onClick={() => addArrayItem(index)}
+                                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                        title="Add item"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                    {field.values.length > 1 && (
+                                      <button
+                                        onClick={() => removeArrayItem(index, valueIndex)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Remove item"
+                                      >
+                                        <XCircle className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>Tip:</strong> Select "Array of Strings" type and use the + button to add multiple items. Each item will be sent as a separate value with the same field name.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Test Button */}
               <button
@@ -780,7 +699,7 @@ const TestAIServicesPage = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">Ready to Test</h3>
                   <p className="text-gray-600">
-                    Configure your server, select a model type, provide required inputs, then click "Test API Endpoint" to see the results.
+                    Configure your server, add custom parameters if needed, then click "Test API Endpoint" to see the results.
                   </p>
                 </div>
               )}
@@ -791,35 +710,40 @@ const TestAIServicesPage = () => {
           <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Code className="w-5 h-5 text-blue-600" />
-              Model Type Examples
+              Common Parameter Examples
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Image Classification</p>
-                <code className="text-xs text-gray-600 block">File: Image file (JPG, PNG)</code>
-                <code className="text-xs text-gray-600 block">Data: ue_id</code>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Text Input</p>
+                <code className="text-xs text-gray-600 block">Field: text</code>
+                <code className="text-xs text-gray-600 block">Value: "Your text here"</code>
               </div>
               <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Text Classification / NER</p>
-                <code className="text-xs text-gray-600 block">Data: text, ue_id</code>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Prompt</p>
+                <code className="text-xs text-gray-600 block">Field: prompt</code>
+                <code className="text-xs text-gray-600 block">Value: "Generate an image..."</code>
               </div>
               <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Image Captioning</p>
-                <code className="text-xs text-gray-600 block">File: Image file</code>
-                <code className="text-xs text-gray-600 block">Data: text (optional prompt), ue_id</code>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Text Prompts (Array)</p>
+                <code className="text-xs text-gray-600 block">Field: text_prompt</code>
+                <code className="text-xs text-gray-600 block">Type: Array of Strings</code>
+                <code className="text-xs text-gray-600 block">Items: "a cat", "a dog"</code>
               </div>
               <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Audio Transcription</p>
-                <code className="text-xs text-gray-600 block">File: Audio file (MP3, WAV)</code>
-                <code className="text-xs text-gray-600 block">Data: ue_id</code>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Sequence</p>
+                <code className="text-xs text-gray-600 block">Field: sequence</code>
+                <code className="text-xs text-gray-600 block">Value: "Text to classify"</code>
               </div>
               <div className="p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Sentence Embeddings</p>
-                <code className="text-xs text-gray-600 block">Data: sentences (array), ue_id</code>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Candidate Labels (Array)</p>
+                <code className="text-xs text-gray-600 block">Field: candidate_labels</code>
+                <code className="text-xs text-gray-600 block">Type: Array of Strings</code>
+                <code className="text-xs text-gray-600 block">Items: "sports", "tech"</code>
               </div>
               <div className="p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-2">Zero-shot Classification</p>
-                <code className="text-xs text-gray-600 block">Data: sequence, candidate_labels, ue_id</code>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Custom Field</p>
+                <code className="text-xs text-gray-600 block">Field: your_field_name</code>
+                <code className="text-xs text-gray-600 block">Value: your_value</code>
               </div>
             </div>
           </div>
