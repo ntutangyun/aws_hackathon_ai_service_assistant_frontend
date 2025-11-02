@@ -15,7 +15,7 @@ const getApiUrl = () => {
 
   // Check if we're hosted on AWS Amplify
   if (hostname.includes('amplifyapp.com')) {
-    return 'https://wdmniyiwug.us-east-1.awsapprunner.com';
+    return 'https://2629vr8fyj.us-east-1.awsapprunner.com';
   }
 
   // Check for custom domain (optional - adjust as needed)
